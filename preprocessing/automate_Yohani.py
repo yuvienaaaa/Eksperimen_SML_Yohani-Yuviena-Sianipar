@@ -122,9 +122,10 @@ def preprocess_data(
 
 if __name__ == "__main__":
     preprocess_data(
-        input_path="Telco_Customer_Churn.csv",
-        output_dir="Telco_Customer_preprocessing"
+        input_path="namadataset_raw/Telco_Customer_Churn.csv",
+        output_dir="preprocessing/TelcoCustomer_preprocessing"
     )
+
 
 import os
 os.listdir("Telco_Customer_preprocessing")
