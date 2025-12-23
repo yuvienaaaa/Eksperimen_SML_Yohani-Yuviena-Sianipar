@@ -11,15 +11,10 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 # =========================
-# CONFIG: Samakan dengan eksperimen
+# TENURE BINNING (SAMA PERSIS DENGAN NOTEBOOK EKSPERIMEN)
 # =========================
-# Jika eksperimen kamu pakai 4 bin:
-# TENURE_BINS   = [-1, 12, 24, 48, np.inf]
-# TENURE_LABELS = ["0-12", "13-24", "25-48", "49+"]
-#
-# Jika eksperimen kamu pakai 5 bin (lebih detail):
-TENURE_BINS = [-1, 12, 24, 48, 60, np.inf]
-TENURE_LABELS = ["0-12", "13-24", "25-48", "49-60", "61+"]
+TENURE_BINS = [-1, 12, 24, 48, np.inf]
+TENURE_LABELS = ["0-12", "13-24", "25-48", "49+"]
 
 
 class IQRClipper(BaseEstimator, TransformerMixin):
@@ -33,7 +28,6 @@ class IQRClipper(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         X = np.asarray(X, dtype=float)
 
-        # handle empty
         if X.size == 0 or X.ndim != 2 or X.shape[1] == 0:
             self.low_ = None
             self.high_ = None
@@ -55,23 +49,18 @@ class IQRClipper(BaseEstimator, TransformerMixin):
 
 
 def add_tenure_binning(df: pd.DataFrame) -> pd.DataFrame:
-    """Add tenure_bin (fixed bins) like in experiment notebook."""
+    """Add tenure_bin exactly like in experiment notebook."""
     if "tenure" not in df.columns:
         return df
 
     out = df.copy()
     out["tenure_bin"] = pd.cut(out["tenure"], bins=TENURE_BINS, labels=TENURE_LABELS)
-    # lebih rapi: category
     out["tenure_bin"] = out["tenure_bin"].astype("category")
     return out
 
 
 def build_onehot_encoder():
-    """
-    Buat OneHotEncoder yang kompatibel dengan berbagai versi sklearn:
-    - sklearn baru: sparse_output=False
-    - sklearn lama: sparse=False
-    """
+    """Compat for different sklearn versions."""
     try:
         return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     except TypeError:
@@ -126,7 +115,7 @@ def preprocess_data(
             "Periksa isi kolom churn."
         )
 
-    # 8.1) Add binning feature (supaya sama dengan eksperimen)
+    # 8.1) Add tenure_bin (SAMA dengan eksperimen)
     df = add_tenure_binning(df)
 
     # 9) Split features and target
@@ -137,14 +126,10 @@ def preprocess_data(
     num_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
     cat_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
 
-    # Safety: pastikan tenure_bin masuk kategori (kalau ada)
-    if "tenure_bin" in X.columns and "tenure_bin" not in cat_cols:
-        cat_cols.append("tenure_bin")
-
     print("Numeric columns:", num_cols)
     print("Categorical columns:", cat_cols)
 
-    # 11) Train-test split (split dulu, supaya IQR bounds belajar dari TRAIN saja)
+    # 11) Train-test split (IQR bounds belajar dari TRAIN)
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -153,7 +138,7 @@ def preprocess_data(
         stratify=y,
     )
 
-    # 12) Build preprocessing pipelines
+    # 12) Pipelines
     numeric_pipe = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
@@ -181,7 +166,7 @@ def preprocess_data(
     X_train_enc = preprocessor.fit_transform(X_train)
     X_test_enc = preprocessor.transform(X_test)
 
-    # 13.1) Feature names (biar CSV punya header)
+    # 13.1) Feature names for CSV header
     try:
         feature_names = preprocessor.get_feature_names_out()
     except Exception:
